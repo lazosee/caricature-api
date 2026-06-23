@@ -1,5 +1,5 @@
 {
-	"name": "caricature",
+	"name": "caricature-api",
 	"type": "module",
 	"scripts": {
 		"dev": "wrangler dev",
