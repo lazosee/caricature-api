@@ -17,7 +17,7 @@ app.post("/upload", async (c) => {
     const imageKey = `${crypto.randomUUID()}.jpg`;
 
     // Immediately park the file inside the bucket
-    await c.env.R2.put(imageKey, await file.arrayBuffer(), {
+    await c.env.R2.put(imageKey, file.stream(), {
       httpMetadata: { contentType: file.type },
     });
 
@@ -40,9 +40,13 @@ app.post("/upload", async (c) => {
       },
     );
   } catch (err: any) {
+    // Add this line so you can read the exact stack trace in 'wrangler tail' or Logflare
+    console.error("CRITICAL UPLOAD FAULT:", err.stack || err.message || err);
+
     return c.json(
       {
-        message: err.message,
+        message: err.message || "Internal Upload Fault",
+        error: err.stack,
       },
       500,
     );
