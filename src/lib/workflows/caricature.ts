@@ -1,5 +1,4 @@
 import { Buffer } from "node:buffer";
-
 import {
   WorkflowEntrypoint,
   WorkflowEvent,
@@ -10,23 +9,18 @@ export class CaricatureWorkflow extends WorkflowEntrypoint<CloudflareBindings> {
   async run(event: WorkflowEvent<{ imageKey: string }>, step: WorkflowStep) {
     const { imageKey } = event.payload;
 
-    // STEP 1: Fetch raw image bytes from R2
-    const originalImageBytes = await step.do(
-      "fetch-original-image",
+    // COMBINED STEP 1 & 2: Fetch and analyze directly to keep state small
+    const visualDescription = await step.do(
+      "fetch-and-analyze-image",
       async () => {
+        // 1. Fetch raw image bytes from R2
         const obj = await this.env.R2.get(imageKey);
         if (!obj) throw new Error("Target image missing from storage");
 
-        return await obj.arrayBuffer();
-      },
-    );
-
-    // STEP 2: leverage Vision LLM to generate an accurate prompt description
-    const visualDescription = await step.do(
-      "analyze-facial-features",
-      async () => {
+        const originalImageBytes = await obj.arrayBuffer();
         const uInt8Array = Array.from(new Uint8Array(originalImageBytes));
 
+        // 2. Leverage Vision LLM to generate an accurate prompt description
         const response = await this.env.AI.run("@cf/llava-hf/llava-1.5-7b-hf", {
           image: uInt8Array,
           prompt: `
@@ -43,6 +37,7 @@ export class CaricatureWorkflow extends WorkflowEntrypoint<CloudflareBindings> {
           max_tokens: 200,
         });
 
+        // Only return the text string (well under 1MiB limit)
         return response.description;
       },
     );
@@ -62,24 +57,14 @@ export class CaricatureWorkflow extends WorkflowEntrypoint<CloudflareBindings> {
         - The character must look directly at the viewer with a calm, neutral, intense gaze.
         `;
 
-      // Added negative prompting to stabilize the style
-      const negativePrompt = `
-        beard, mustache, stubble, facial hair, long hair, straight hair, messy hair, 
-        caucasian, pale skin, light skin, smiling, grinning, distorted eyes, 
-        low resolution, photorealistic, 3D render, digital painting, watercolor, sketch, 
-        textured background, shadows on background, gradient background, extra limbs.
-    `;
-
       const response = await this.env.AI.run(
         "@cf/black-forest-labs/flux-1-schnell",
         {
           prompt: enhancedPrompt,
-          //   negative_prompt: negativePrompt,
-          steps: 8, // Fast rendering
+          steps: 8,
         },
       );
 
-      // Response contains a base64 string or stream depending on the model specs
       return response.image;
     });
 
