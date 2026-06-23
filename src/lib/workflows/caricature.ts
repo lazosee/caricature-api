@@ -1,12 +1,12 @@
 import { Buffer } from "node:buffer";
 
 import {
-  WorkerEntrypoint,
+  WorkflowEntrypoint,
   WorkflowEvent,
   WorkflowStep,
 } from "cloudflare:workers";
 
-export class CaricatureWorkflow extends WorkerEntrypoint<CloudflareBindings> {
+export class CaricatureWorkflow extends WorkflowEntrypoint<CloudflareBindings> {
   async run(event: WorkflowEvent<{ imageKey: string }>, step: WorkflowStep) {
     const { imageKey } = event.payload;
 
