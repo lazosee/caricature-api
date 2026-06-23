@@ -30,7 +30,7 @@
       "name": "caricature-workflow",
       "binding": "CARICATURE_WORKFLOW",
       "class_name": "CaricatureWorkflow",
-      // "script_name": "src/lib/workflows/caricature.ts",
+      "script_name": "src/lib/workflows/caricature.ts",
     },
   ],
   /**
